@@ -123,6 +123,14 @@ hello, world!
 - Visualize the call graph with `resonate tree <id>`.
 - Crash the worker mid-run (`Ctrl-C` before `h.Result` returns) and restart it — the same `Run` call will resume rather than re-invoke `greet` from scratch.
 
+## Replay semantics
+
+Workflow functions execute from the top on every resume. Pure computation can
+run directly in the workflow body, but observable side effects such as printing,
+sending HTTP requests, or incrementing metrics will happen again on each replay
+unless they are wrapped in `ctx.Run`. A settled `ctx.Run` call is recorded as a
+durable child promise, so replay short-circuits the child and skips the body.
+
 ## What's in the package
 
 The package owns the workflow API (`Context`, `Effects`, `Run`, `RPC`, `Sleep`, `Promise`, `Detached`), the wire protocol (`Sender`, the `Network` interface, push-message decoding), and the shared domain types (`PromiseRecord`, `TaskRecord`, etc.). Concrete transports live in two leaf subpackages:
