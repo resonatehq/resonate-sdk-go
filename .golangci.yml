@@ -1,0 +1,44 @@
+# golangci-lint configuration for resonate-sdk-go
+# Pinned to match CI: golangci-lint v1.61.0
+
+version: "2"
+
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters:
+  default: none
+  enable:
+    # Default linters (aligned with Go best practices)
+    - errcheck       # Check for unchecked errors
+    - gosimple       # Simplify code
+    - govet          # Report suspicious constructs
+    - ineffassign    # Detect ineffectual assignments
+    - staticcheck    # Advanced static analysis
+    - unused         # Check for unused constants, variables, functions
+
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment  # Let the compiler handle struct layout
+
+formatters:
+  enable:
+    - gofmt
+  settings:
+    gofmt:
+      simplify: true
+
+issues:
+  exclude-dirs:
+    - vendor
+  exclude-rules:
+    # Allow blank returns in test helpers
+    - path: _test\.go
+      linters:
+        - errcheck
