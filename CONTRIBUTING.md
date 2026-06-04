@@ -112,12 +112,17 @@ Here is an outline of the steps needed to make changes to the resonate project.
 
 ## What to Contribute To?
 
+We're pre-semver, so the highest-leverage contributions right now are documentation
+improvements, examples, and small bugfixes. If you're thinking about a larger change —
+especially anything touching the public API — please open an issue to discuss it first
+so we can make sure the direction is stable before you invest the time.
+
 Here are some areas where your contributions would be valuable:
 
 - Bug fixes for existing packages.
 - Refactoring efforts to improve code quality.
 - Enhancements to our testing and reliability efforts.
 - Documentation improvements and examples.
-- New codec implementations for additional message formats.
+- Custom `Encryptor` implementations (e.g., AES-GCM encryption at the durability boundary).
 
 Thank you for your contributions and support in building a better Resonate! 🚀
