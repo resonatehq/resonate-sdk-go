@@ -70,7 +70,7 @@ func (f *coreFixture) createRootTask(t *testing.T, id, funcName string, args any
 	if err != nil {
 		t.Fatalf("encode task data: %v", err)
 	}
-	res, err := f.sender.TaskCreate(f.ctx, f.pid, 10_000, resonate.PromiseCreateReq{
+	res, err := f.sender.TaskCreate(f.ctx, f.pid, 10_000, id, resonate.PromiseCreateReq{
 		ID:        id,
 		TimeoutAt: int64(1) << 50,
 		Param:     param,
@@ -102,7 +102,7 @@ func (f *coreFixture) createRootTaskWithTags(t *testing.T, id, funcName string, 
 	for k, v := range extraTags {
 		tags[k] = v
 	}
-	res, err := f.sender.TaskCreate(f.ctx, f.pid, 10_000, resonate.PromiseCreateReq{
+	res, err := f.sender.TaskCreate(f.ctx, f.pid, 10_000, id, resonate.PromiseCreateReq{
 		ID:        id,
 		TimeoutAt: int64(1) << 50,
 		Param:     param,
@@ -394,7 +394,7 @@ func TestCore_ExecuteUntilBlocked_WithPreload(t *testing.T) {
 	// child id "p1-pre.1". Children are codec-encoded on the wire just like
 	// root promises, so pre-settle with codec.Encode to match.
 	encVal, _ := f.codec.Encode(99)
-	if _, err := f.sender.PromiseCreate(f.ctx, resonate.PromiseCreateReq{
+	if _, err := f.sender.PromiseCreate(f.ctx, "", resonate.PromiseCreateReq{
 		ID: "p1-pre.1", TimeoutAt: int64(1) << 50,
 	}); err != nil {
 		t.Fatalf("promise.create child: %v", err)
@@ -567,7 +567,7 @@ func TestCore_NoopHeartbeatDoesNotInterfere(t *testing.T) {
 	core := resonate.NewCore(sender, codec, reg, resonate.IdentityTargetResolver, resonate.NoopHeartbeat{}, pid, 10_000)
 
 	param, _ := codec.Encode(map[string]any{"func": "seven3", "args": nil})
-	res, err := sender.TaskCreate(ctx, pid, 10_000, resonate.PromiseCreateReq{
+	res, err := sender.TaskCreate(ctx, pid, 10_000, "p1-noophb", resonate.PromiseCreateReq{
 		ID: "p1-noophb", TimeoutAt: int64(1) << 50, Param: param,
 		Tags: map[string]string{"resonate:branch": "p1-noophb", "resonate:target": "any"},
 	})

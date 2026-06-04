@@ -297,7 +297,7 @@ func (r *Resonate) RPC(ctx stdctx.Context, id, funcName string, args any, opts .
 	if err != nil {
 		return nil, err
 	}
-	if _, err := r.sender.PromiseCreate(ctx, req); err != nil {
+	if _, err := r.sender.PromiseCreate(ctx, prefixedID, req); err != nil {
 		return nil, err
 	}
 	return r.handleFromID(ctx, prefixedID)
@@ -676,7 +676,7 @@ func (rf *RegisteredFunc[A, R]) Run(ctx stdctx.Context, id string, args A, opts 
 	}
 
 	ttlMs := r.safeTTLMs()
-	res, err := r.sender.TaskCreate(ctx, r.pid, ttlMs, req)
+	res, err := r.sender.TaskCreate(ctx, r.pid, ttlMs, prefixedID, req)
 	if err != nil {
 		return nil, err
 	}
