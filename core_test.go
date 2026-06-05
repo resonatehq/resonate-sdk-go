@@ -341,7 +341,7 @@ func TestCore_OnMessage_HappyPath(t *testing.T) {
 		t.Fatalf("release: %v", err)
 	}
 
-	status, err := f.core.OnMessage(f.ctx, "p1-on", v)
+	status, err := f.core.OnMessage(f.ctx, "p1-on", v, "p1-on")
 	if err != nil {
 		t.Fatalf("OnMessage: %v", err)
 	}
@@ -356,7 +356,7 @@ func TestCore_OnMessage_HappyPath(t *testing.T) {
 
 func TestCore_OnMessage_AcquireFailureReturnsError(t *testing.T) {
 	f := newCoreFixture(t)
-	_, err := f.core.OnMessage(f.ctx, "nonexistent-task", 0)
+	_, err := f.core.OnMessage(f.ctx, "nonexistent-task", 0, "nonexistent-task")
 	if err == nil {
 		t.Fatal("expected error for nonexistent task")
 	}
@@ -372,7 +372,7 @@ func TestCore_OnMessage_ReturnsSuspended(t *testing.T) {
 		t.Fatalf("release: %v", err)
 	}
 
-	status, err := f.core.OnMessage(f.ctx, "p1-onsus", v)
+	status, err := f.core.OnMessage(f.ctx, "p1-onsus", v, "p1-onsus")
 	if err != nil {
 		t.Fatalf("OnMessage: %v", err)
 	}
@@ -452,7 +452,7 @@ func TestCore_ReleasesTaskOnFunctionNotFound(t *testing.T) {
 		t.Fatalf("error = %T, want *FunctionNotFoundError", err)
 	}
 	// Task should be releasable: a fresh acquire under a different pid succeeds.
-	if _, acqErr := f.sender.TaskAcquire(f.ctx, "p1-nofn", 0, "other-pid", 1000); acqErr != nil {
+	if _, acqErr := f.sender.TaskAcquire(f.ctx, "p1-nofn", 0, "other-pid", 1000, "p1-nofn"); acqErr != nil {
 		t.Errorf("expected acquire after release, got: %v", acqErr)
 	}
 }
@@ -510,7 +510,7 @@ func TestCore_PlainPanicYieldsApplicationErrorAndReleasesTask(t *testing.T) {
 	if !strings.Contains(appErr.Message, "something went wrong") {
 		t.Errorf("error message = %q, want it to contain the panic value", appErr.Message)
 	}
-	if _, acqErr := f.sender.TaskAcquire(f.ctx, "p1-panic", 0, "other-pid", 1000); acqErr != nil {
+	if _, acqErr := f.sender.TaskAcquire(f.ctx, "p1-panic", 0, "other-pid", 1000, "p1-panic"); acqErr != nil {
 		t.Errorf("expected acquire to succeed after release, got: %v", acqErr)
 	}
 }

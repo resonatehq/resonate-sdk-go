@@ -486,8 +486,9 @@ func (r *Resonate) installMessageHandler() {
 		case ExecuteMessage:
 			taskID := m.TaskID
 			version := m.Version
+			origin := m.Origin
 			go func() {
-				if _, err := r.core.OnMessage(r.bgCtx, taskID, version); err != nil {
+				if _, err := r.core.OnMessage(r.bgCtx, taskID, version, origin); err != nil {
 					r.log.Error("core.OnMessage failed", "task_id", taskID, "err", err)
 				}
 			}()

@@ -87,8 +87,8 @@ func NewCore(sender *Sender, codec *Codec, reg *Registry, resolver TargetResolve
 // the root promise, and runs ExecuteUntilBlocked. The task was dispatched
 // by the server (not locally created here), so the per-call retry policy
 // is unknown; DefaultRetryPolicy applies.
-func (c *Core) OnMessage(ctx stdctx.Context, taskID string, version int64) (Status, error) {
-	res, err := c.sender.TaskAcquire(ctx, taskID, version, c.pid, c.ttl)
+func (c *Core) OnMessage(ctx stdctx.Context, taskID string, version int64, origin string) (Status, error) {
+	res, err := c.sender.TaskAcquire(ctx, taskID, version, c.pid, c.ttl, origin)
 	if err != nil {
 		return StatusErr, err
 	}
