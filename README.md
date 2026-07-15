@@ -11,13 +11,13 @@
 
 # Resonate Go SDK
 
-> ⚠️ **Pre-release.** APIs may change before the first semver-tagged release. Early adopters welcome — pin to a specific commit or use `@main` to track the latest, and check the [open issues](https://github.com/resonatehq/resonate-sdk-go/issues) for known gaps. The internal protocol is stable; the Go API surface is still settling.
+> ⚠️ **Early release.** [0.1.0](https://github.com/resonatehq/resonate-sdk-go/releases/tag/0.1.0) is the first tagged release. APIs may still change before a stable 1.0 — check the [open issues](https://github.com/resonatehq/resonate-sdk-go/issues) for known gaps. The internal protocol is stable; the Go API surface is still settling.
 
 ## About this component
 
 The Resonate Go SDK lets you build reliable, distributed Go applications on the durable execution programming model. Annotate ordinary Go functions, run them through `Resonate`, and the platform handles retries, recovery, and replay — when a process crashes mid-workflow, execution resumes from the last checkpoint, not from the beginning.
 
-- [Open an issue or pull request](https://github.com/resonatehq/resonate-sdk-go/issues) — contribution starts here while the SDK is prerelease
+- [Open an issue or pull request](https://github.com/resonatehq/resonate-sdk-go/issues) — contribution starts here
 - [Evaluate Resonate for your next project](https://docs.resonatehq.io/evaluate/)
 - [Example application library](https://github.com/resonatehq-examples)
 - [Distributed Async Await — the concepts that power Resonate](https://www.distributed-async-await.io/)
@@ -41,7 +41,7 @@ brew install resonatehq/tap/resonate
 go get github.com/resonatehq/resonate-sdk-go@latest
 ```
 
-No semver tag is published yet — `@latest` resolves to a Go module pseudo-version pinned to the latest `main` commit. Pin to a specific commit if you need stability before `v0.1.0` is cut.
+The current git tag is `0.1.0` (no `v` prefix), which Go's module resolver does not recognize as a module version — so `@v0.1.0` does not resolve, and `@latest` resolves to a pseudo-version pinned to the latest `main` commit. Pin to a specific commit if you need a reproducible build.
 
 3. Write your first Resonate function
 
@@ -225,11 +225,11 @@ The package owns the workflow API (`Context`, `Effects`, `Run`, `RPC`, `Sleep`, 
 - [`httpnet`](./httpnet) — HTTP + SSE transport for talking to a live Resonate server.
 - [`localnet`](./localnet) — in-process transport that runs the server state machine in a single actor goroutine. Useful for tests and for "no-server-required" local development.
 
-See the package documentation on [pkg.go.dev](https://pkg.go.dev/github.com/resonatehq/resonate-sdk-go) (published once the first semver tag is cut) or read `doc.go` directly.
+See the package documentation on [pkg.go.dev](https://pkg.go.dev/github.com/resonatehq/resonate-sdk-go) or read `doc.go` directly.
 
 ## Documentation
 
-Read the [docs](https://docs.resonatehq.io) for the full programming model, deployment patterns, and the broader Resonate ecosystem. A Go-specific section will land on the docs site alongside the first tagged release; until then, the `examples/` directory in this repo and the sibling [TypeScript](https://github.com/resonatehq/resonate-sdk-ts), [Python](https://github.com/resonatehq/resonate-sdk-py), and [Rust](https://github.com/resonatehq/resonate-sdk-rs) SDK READMEs are the closest reference.
+Read the [docs](https://docs.resonatehq.io) for the full programming model, deployment patterns, and the broader Resonate ecosystem. The [Go SDK guide](https://docs.resonatehq.io/develop/go) covers the Go API surface; the `examples/` directory in this repo has runnable programs for each pattern.
 
 ## License
 
