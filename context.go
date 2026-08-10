@@ -134,7 +134,15 @@ func (c *Context) child(id, funcName string, timeoutAt int64) *Context {
 }
 
 func (c *Context) nextID() string {
-	return fmt.Sprintf("%s.%d", c.id, c.seq.Add(1))
+	// The id is `<promiseId>:<lineage>`: a single `:` separates the promiseId
+	// (lineage origin) from the lineage, and `.` separates lineage segments. The
+	// first segment minted off a bare promiseId (id == originID) uses `:`
+	// (`root` -> `root:1`); every deeper segment uses `.` (`root:1` -> `root:1.1`).
+	sep := ":"
+	if c.id != c.originID {
+		sep = "."
+	}
+	return fmt.Sprintf("%s%s%d", c.id, sep, c.seq.Add(1))
 }
 
 func (c *Context) childTimeout(requested time.Duration) int64 {
@@ -444,7 +452,7 @@ func (c *Context) Promise(opts ...PromiseOpts) (*Future, error) {
 
 // Detached dispatches a remote function and returns only its promise ID. It
 // is NOT registered in spawnedRemote — the parent workflow does not suspend
-// on it. The ID is deterministic: `{origin}.{16-hex FNV-1a 64 of "id.seq"}`.
+// on it. The ID is deterministic: `{origin}:{16-hex FNV-1a 64 of "id:seq"}`.
 //
 // The hash is FNV-1a 64 — the Rust SDK uses seahash, so Detached IDs are
 // NOT cross-SDK-portable. If you need cross-runtime determinism, do not
@@ -452,7 +460,7 @@ func (c *Context) Promise(opts ...PromiseOpts) (*Future, error) {
 func (c *Context) Detached(funcName string, args any, opts ...DetachedOpts) (string, error) {
 	opt := firstOpt(opts)
 	raw := c.nextID()
-	childID := fmt.Sprintf("%s.%s", c.originID, hashID(raw))
+	childID := fmt.Sprintf("%s:%s", c.originID, hashID(raw))
 	req, err := c.remoteCreateReq(childID, funcName, args, opt.Timeout, optTarget(opt.Target))
 	if err != nil {
 		return "", err
