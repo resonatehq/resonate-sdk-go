@@ -19,10 +19,9 @@ import (
 // localConfig is the subset of resonate.Config most tests vary. Anything not
 // set falls back to defaults appropriate for local-mode tests.
 type localConfig struct {
-	PID    string
-	Group  string
-	Prefix string
-	TTL    time.Duration
+	PID   string
+	Group string
+	TTL   time.Duration
 }
 
 // newLocal builds a Resonate instance backed by an in-process LocalNetwork.
@@ -47,7 +46,6 @@ func newLocal(t *testing.T, lc localConfig) *resonate.Resonate {
 		Network:   localnet.NewLocal(group, &pidPtr),
 		Heartbeat: resonate.NoopHeartbeat{},
 		TTL:       ttl,
-		Prefix:    lc.Prefix,
 	})
 	if err != nil {
 		t.Fatalf("resonate.New: %v", err)
@@ -107,20 +105,6 @@ func TestCustomTTL(t *testing.T) {
 	r := newLocal(t, localConfig{TTL: 120 * time.Second})
 	if got := r.TTL(); got != 120*time.Second {
 		t.Errorf("TTL = %v, want 120s", got)
-	}
-}
-
-func TestEmptyPrefix(t *testing.T) {
-	r := newLocal(t, localConfig{})
-	if r.IDPrefix() != "" {
-		t.Errorf("empty Prefix should produce empty IDPrefix, got %q", r.IDPrefix())
-	}
-}
-
-func TestPrefixGetsColon(t *testing.T) {
-	r := newLocal(t, localConfig{Prefix: "myapp"})
-	if got, want := r.IDPrefix(), "myapp:"; got != want {
-		t.Errorf("IDPrefix = %q, want %q", got, want)
 	}
 }
 
@@ -207,23 +191,6 @@ func TestRunReturnsHandle(t *testing.T) {
 	}
 	if h.ID() != "greet-1" {
 		t.Errorf("handle id = %q, want greet-1", h.ID())
-	}
-}
-
-func TestRunWithPrefixPrependsToID(t *testing.T) {
-	r := newLocal(t, localConfig{Prefix: "app"})
-	noopFn, err := resonate.Register(r, "noop", noop)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := testCtx(t)
-	defer cancel()
-	h, err := noopFn.Run(ctx, "my-id", struct{}{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := h.ID(), "app:my-id"; got != want {
-		t.Errorf("handle id = %q, want %q", got, want)
 	}
 }
 
@@ -395,19 +362,6 @@ func TestRPCWithoutRegistration(t *testing.T) {
 	}
 }
 
-func TestRPCWithPrefix(t *testing.T) {
-	r := newLocal(t, localConfig{Prefix: "svc"})
-	ctx, cancel := testCtx(t)
-	defer cancel()
-	h, err := r.RPC(ctx, "rpc-2", "remote", nil, resonate.RPCOptions{Target: "unhandled"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := h.ID(), "svc:rpc-2"; got != want {
-		t.Errorf("id = %q, want %q", got, want)
-	}
-}
-
 func TestRPCIdempotent(t *testing.T) {
 	r := newLocal(t, localConfig{})
 	ctx, cancel := testCtx(t)
@@ -516,22 +470,6 @@ func TestGetExistingPromise(t *testing.T) {
 	}
 }
 
-func TestGetWithPrefix(t *testing.T) {
-	r := newLocal(t, localConfig{Prefix: "ns"})
-	ctx, cancel := testCtx(t)
-	defer cancel()
-	if _, err := r.RPC(ctx, "p1", "remote", nil, resonate.RPCOptions{Target: "unhandled"}); err != nil {
-		t.Fatal(err)
-	}
-	h, err := r.Get(ctx, "p1")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := h.ID(), "ns:p1"; got != want {
-		t.Errorf("id = %q, want %q", got, want)
-	}
-}
-
 // ──────────────────────────────────────────────────────────────────────────
 // IsURL
 // ──────────────────────────────────────────────────────────────────────────
@@ -591,44 +529,6 @@ func TestStopIsIdempotent(t *testing.T) {
 	}
 	if err := r.Stop(); err != nil {
 		t.Errorf("second Stop: %v", err)
-	}
-}
-
-// ──────────────────────────────────────────────────────────────────────────
-// Prefix consistency
-// ──────────────────────────────────────────────────────────────────────────
-
-func TestPrefixConsistentAcrossRunRPCGet(t *testing.T) {
-	r := newLocal(t, localConfig{Prefix: "p"})
-	noopFn, err := resonate.Register(r, "noop", noop)
-	if err != nil {
-		t.Fatal(err)
-	}
-	ctx, cancel := testCtx(t)
-	defer cancel()
-
-	h1, err := noopFn.Run(ctx, "id1", struct{}{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h1.ID() != "p:id1" {
-		t.Errorf("run id = %q, want p:id1", h1.ID())
-	}
-
-	h2, err := r.RPC(ctx, "id2", "remote", nil, resonate.RPCOptions{Target: "unhandled"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h2.ID() != "p:id2" {
-		t.Errorf("rpc id = %q, want p:id2", h2.ID())
-	}
-
-	h3, err := r.Get(ctx, "id2")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if h3.ID() != "p:id2" {
-		t.Errorf("get id = %q, want p:id2", h3.ID())
 	}
 }
 

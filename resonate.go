@@ -44,10 +44,6 @@ type Config struct {
 	// TTL is the per-task lease duration. Defaults to 60s.
 	TTL time.Duration
 
-	// Prefix is prepended (with ":") to every promise/task ID created by
-	// Run, RPC, or Get. Empty means no prefix.
-	Prefix string
-
 	// Token, if non-empty, is sent as Bearer auth in every protocol request.
 	Token string
 }
@@ -151,9 +147,8 @@ type RPCOptions struct {
 // the create-and-acquire race. Core.OnMessage and Core.ExecuteUntilBlocked
 // are synchronous from the caller's perspective.
 type Resonate struct {
-	pid      string
-	idPrefix string
-	ttl      time.Duration
+	pid string
+	ttl time.Duration
 
 	codec     *Codec
 	network   Network
@@ -190,7 +185,7 @@ const subscriptionRefreshInterval = 60 * time.Second
 // New builds a Resonate instance. Network selection precedence: cfg.URL >
 // cfg.Network > RESONATE_URL env variable. When a URL is used, a default
 // HTTPNetwork is constructed against it. Defaults: TTL 60s, AsyncHeartbeat at
-// TTL/2, NoopEncryptor, no prefix.
+// TTL/2, NoopEncryptor.
 func New(cfg Config) (*Resonate, error) {
 	network := cfg.Network
 	switch {
@@ -208,11 +203,6 @@ func New(cfg Config) (*Resonate, error) {
 	ttl := cfg.TTL
 	if ttl == 0 {
 		ttl = 60 * time.Second
-	}
-
-	idPrefix := ""
-	if cfg.Prefix != "" {
-		idPrefix = cfg.Prefix + ":"
 	}
 
 	var authPtr *string
@@ -237,9 +227,8 @@ func New(cfg Config) (*Resonate, error) {
 	bgCtx, bgCancel := stdctx.WithCancel(stdctx.Background())
 
 	r := &Resonate{
-		pid:       network.PID(),
-		idPrefix:  idPrefix,
-		ttl:       ttl,
+		pid: network.PID(),
+		ttl: ttl,
 		codec:     codec,
 		network:   network,
 		registry:  registry,
@@ -286,21 +275,20 @@ func New(cfg Config) (*Resonate, error) {
 // the target function. Returns a Handle.
 func (r *Resonate) RPC(ctx stdctx.Context, id, funcName string, args any, opts ...RPCOptions) (*Handle, error) {
 	opt := firstOpt(opts)
-	prefixedID := r.prefixID(id)
-	req, err := r.buildRootPromiseCreateReq(prefixedID, funcName, args, opt.Timeout, opt.Target, opt.Tags)
+	req, err := r.buildRootPromiseCreateReq(id, funcName, args, opt.Timeout, opt.Target, opt.Tags)
 	if err != nil {
 		return nil, err
 	}
 	if _, err := r.sender.PromiseCreate(ctx, req); err != nil {
 		return nil, err
 	}
-	return r.handleFromID(ctx, prefixedID)
+	return r.handleFromID(ctx, id)
 }
 
 // Get returns a Handle for an existing promise. Returns *ServerError{Code: 404}
 // when the promise does not exist.
 func (r *Resonate) Get(ctx stdctx.Context, id string) (*Handle, error) {
-	return r.handleFromID(ctx, r.prefixID(id))
+	return r.handleFromID(ctx, id)
 }
 
 // Stop tears down background goroutines and the network. Idempotent.
@@ -327,9 +315,6 @@ func (r *Resonate) PID() string { return r.pid }
 // TTL returns the configured TTL.
 func (r *Resonate) TTL() time.Duration { return r.ttl }
 
-// IDPrefix returns the configured ID prefix (including trailing ":" when set).
-func (r *Resonate) IDPrefix() string { return r.idPrefix }
-
 // Sender returns the internal Sender — useful for tests that need to inspect
 // or manipulate server state via raw RPC (no mocks; runs through the same
 // Network as the Resonate instance).
@@ -345,13 +330,6 @@ func (r *Resonate) Network() Network { return r.network }
 
 // IsURL reports whether s looks like a URL (i.e. contains "://").
 func IsURL(s string) bool { return strings.Contains(s, "://") }
-
-func (r *Resonate) prefixID(id string) string {
-	if r.idPrefix == "" {
-		return id
-	}
-	return r.idPrefix + id
-}
 
 // resolveTarget returns target unchanged if it's a URL, runs it through the
 // network resolver if it's a bare name, and falls back to the network's group
@@ -379,7 +357,7 @@ func (r *Resonate) safeTTLMs() int64 {
 // to match Rust's build_root_tags. The param is codec-encoded so the worker
 // that acquires the task can decode it via Codec.DecodePromise (the symmetric
 // inverse used by Core).
-func (r *Resonate) buildRootPromiseCreateReq(prefixedID, funcName string, args any, timeout time.Duration, target string, extraTags map[string]string) (PromiseCreateReq, error) {
+func (r *Resonate) buildRootPromiseCreateReq(id, funcName string, args any, timeout time.Duration, target string, extraTags map[string]string) (PromiseCreateReq, error) {
 	if timeout <= 0 {
 		timeout = DefaultTopLevelTimeout
 	}
@@ -392,14 +370,14 @@ func (r *Resonate) buildRootPromiseCreateReq(prefixedID, funcName string, args a
 	for k, v := range extraTags {
 		tags[k] = v
 	}
-	tags["resonate:origin"] = prefixedID
-	tags["resonate:branch"] = prefixedID
-	tags["resonate:parent"] = prefixedID
+	tags["resonate:origin"] = id
+	tags["resonate:branch"] = id
+	tags["resonate:parent"] = id
 	tags["resonate:scope"] = "global"
 	tags["resonate:target"] = resolvedTarget
 
 	return PromiseCreateReq{
-		ID:        prefixedID,
+		ID:        id,
 		TimeoutAt: nowMs() + timeout.Milliseconds(),
 		Param:     param,
 		Tags:      tags,
@@ -577,7 +555,7 @@ type Handle struct {
 	codec *Codec
 }
 
-// ID returns the (prefix-prepended) promise id this handle refers to.
+// ID returns the promise id this handle refers to.
 func (h *Handle) ID() string { return h.id }
 
 // Result blocks until the underlying promise settles or ctx is cancelled, then
@@ -663,8 +641,7 @@ func (rf *RegisteredFunc[A, R]) Run(ctx stdctx.Context, id string, args A, opts 
 	}
 	opt := firstOpt(opts)
 
-	prefixedID := r.prefixID(id)
-	req, err := r.buildRootPromiseCreateReq(prefixedID, rf.name, args, opt.Timeout, opt.Target, opt.Tags)
+	req, err := r.buildRootPromiseCreateReq(id, rf.name, args, opt.Timeout, opt.Target, opt.Tags)
 	if err != nil {
 		return nil, err
 	}
@@ -699,7 +676,7 @@ func (rf *RegisteredFunc[A, R]) Run(ctx stdctx.Context, id string, args A, opts 
 		return nil, &DecodingError{Msg: "task.create returned neither Created nor Conflict"}
 	}
 
-	h, err := r.handleFromID(ctx, prefixedID)
+	h, err := r.handleFromID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -712,7 +689,7 @@ type TypedHandle[R any] struct {
 	h *Handle
 }
 
-// ID returns the (prefix-prepended) promise id this handle refers to.
+// ID returns the promise id this handle refers to.
 func (th *TypedHandle[R]) ID() string { return th.h.ID() }
 
 // Result blocks until the underlying promise settles or ctx is cancelled, then
